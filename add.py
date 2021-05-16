@@ -27,7 +27,7 @@ from aqt.utils import tooltip, showWarning
 from .ngen import *
 from .config import *
 
-from .editor import ImgOccEdit
+from .editor import ImgOccEdit, ImgOccEditMod ###@ add oneitm
 from .dialogs import ioCritical, ioInfo
 from .utils import imageProp, img2path, path2url
 
@@ -382,3 +382,132 @@ class ImgOccAdd(object):
             fields[fn] = text
         tags = dialog.tags_edit.text().split()
         return (fields, tags)
+
+
+###@ ''' external start
+class ImgOccAddMod(ImgOccAdd):
+    def __init__(self, editor, origin, oldimg=None):
+        super().__init__(editor, origin, oldimg)
+
+    def callImgOccEdit(self, width, height):
+        """Set up variables, call and prepare ImgOccEdit"""
+        ofill = self.sconf['ofill']
+        scol = self.sconf['scol']
+        swidth = self.sconf['swidth']
+        fsize = self.sconf['fsize']
+        font = self.sconf['font']
+
+        bkgd_url = path2url(self.image_path)
+        opref = self.opref
+        onote = self.ed.note
+        flds = self.mflds
+        deck = mw.col.decks.nameOrNone(opref["did"])
+
+        dialog = ImgOccEditMod(self, self.ed.parentWindow) ###@ edt oneitm
+        dialog.setupFields(flds)
+        dialog.switchToMode(self.mode)
+        self.imgoccedit = dialog
+        logging.debug("Launching new ImgOccEdit instance")
+
+        url = QUrl.fromLocalFile(svg_edit_path)
+        items = QUrlQuery()
+        items.setQueryItems(svg_edit_queryitems)
+        items.addQueryItem('initFill[color]', ofill)
+        items.addQueryItem('dimensions', '{0},{1}'.format(width, height))
+        items.addQueryItem('bkgd_url', bkgd_url)
+        items.addQueryItem('initStroke[color]', scol)
+        items.addQueryItem('initStroke[width]', str(swidth))
+        items.addQueryItem('text[font_size]', str(fsize))
+        items.addQueryItem('text[font_family]', "'%s', %s" %
+                           (font, svg_edit_fonts))
+
+        if self.mode != "add":
+            items.addQueryItem('initTool', 'select'),
+            for i in flds:
+                fn = i["name"]
+                if fn in self.ioflds_priv:
+                    continue
+                dialog.tedit[fn].setPlainText(
+                    onote[fn].replace('<br />', '\n'))
+            svg_url = path2url(opref["omask"])
+            items.addQueryItem('url', svg_url)
+        else:
+            items.addQueryItem('initTool', 'rect'),
+
+        url.setQuery(items)
+        dialog.svg_edit.setUrl(url)
+        dialog.deckChooser.deck.setText(deck)
+        dialog.tags_edit.setCol(mw.col)
+        dialog.tags_edit.setText(opref["tags"])
+
+        if onote:
+            for i in self.ioflds_prsv:
+                if i in onote:
+                    dialog.tedit[i].setPlainText(onote[i])
+
+        if self.mode == "add":
+            dialog.setModal(False)
+
+            def onSvgEditLoaded():
+                dialog.showSvgEdit(True)
+                dialog.fitImageCanvas()
+        else:
+            # modal dialog when editing
+            dialog.setModal(True)
+
+            def onSvgEditLoaded():
+                # Handle obsolete "aa" occlusion mode:
+                if self.opref["occl_tp"] == "aa":
+                    ioInfo("obsolete_aa", parent=dialog)
+                dialog.showSvgEdit(True)
+                dialog.fitImageCanvas()
+
+        dialog.svg_edit.runOnLoaded(onSvgEditLoaded)
+        dialog.visible = True
+        dialog.show()
+
+    def _onAddNotesButtonMod(self, choice, close, svg):
+        """Get occlusion settings in and pass them to the note generator (add)"""
+        dialog = self.imgoccedit
+
+        r1 = self.getUserInputs(dialog)
+        if r1 is False:
+            return False
+        (fields, tags) = r1
+        did = dialog.deckChooser.selectedId()
+
+        ###@ rem oneln
+        gen = ImgOccNoteGeneratorMod(self.ed, svg, self.image_path,
+                            self.opref, tags, fields, did)
+        r = gen.generateNotesMod() ###@ edt oneitm
+        if r is False:
+            return False
+
+        if self.origin == "addcards" and self.ed.note:
+            # Update Editor with modified tags and sources field
+            self.ed.tags.setText(" ".join(tags))
+            self.ed.saveTags()
+            for i in self.ioflds_prsv:
+                if i in self.ed.note:
+                    self.ed.note[i] = fields[i]
+            self.ed.loadNote()
+            deck = mw.col.decks.nameOrNone(did)
+            self.ed.parentWindow.deckChooser.deck.setText(deck)
+
+        if close:
+            dialog.close()
+
+        mw.reset()
+
+    def onAddNotesButtonMod(self, choice, close): ###@ edt oneitm
+        dialog = self.imgoccedit
+        dialog.svg_edit.evalWithCallback(
+            "svgCanvas.svgCanvasToString();",
+            lambda val, choice=choice, close=close: self._onAddNotesButtonMod(choice, close, val)) ###@ edt oneitm
+
+    ###@ add block start
+    def on_process_all_btn(self, choice, close):
+        self.onAddNotesButtonMod(choice, close)
+    ###@ add block start
+
+###@ external end

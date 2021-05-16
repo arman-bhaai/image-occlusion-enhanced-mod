@@ -12,3 +12,18 @@ License: GNU AGPLv3 <https://www.gnu.org/licenses/agpl.html>
 """
 
 from . import main
+#######
+# comment defs
+# ###@ add oneln --> added one line
+# ###@ add oneitm --> added one item (section of a line)
+# ###@ ''' external start  --> this multiline block should be placed on a separate moduler file
+# ###@ ''' external end -->
+# ###@ add block start --> added a block of code
+# ###@ add block end -->
+
+# ###@ rem oneln --> removed one line from here
+
+# ###@ edt oneln --> edited one line
+# ###@ edt oneitm --> edited one item
+# ###@ edt block start --> edited a block of code
+# ###@ edt block end

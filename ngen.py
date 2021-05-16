@@ -446,6 +446,299 @@ class ImgOccNoteGenerator(object):
             mw.col.addNote(note)
             logging.debug("!notecreate %s", note)
 
+###@ ''' external start
+import xml.etree.ElementTree as ET ###@ add oneln
+import re ###@ add oneln
+
+class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
+    occl_tp = "po"
+    def __init__(self, ed, svg, image_path, opref, tags, fields, did):
+        super().__init__(ed, svg, image_path, opref, tags, fields, did)
+        self.mnode_ids = {}
+        self.rnode_ids = {}
+
+    def inverse_wrapper(self, wrapper_elm, root_elm): # wrapper should be shape or path, not g
+        if wrapper_elm.tag == self._ns('rect'):
+            r_height = float(root_elm.get('height'))
+            r_width = float(root_elm.get('width'))
+
+            w_x = float(wrapper_elm.get('x'))
+            w_y = float(wrapper_elm.get('y'))
+            w_height = float(wrapper_elm.get('height'))
+            w_width = float(wrapper_elm.get('width'))
+        # demo  structure
+        #   <rect x="100" y="100" width="300" height="100" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
+        #   <path d="m0,0 800,0 l0,800## l-800,0## l0,-700## l95,0 l0,105 l310,0## l0,-110 l-310,0 l0,5 l-95,0 z" stroke="green" stroke-width="3"
+        #   fill="none" />
+
+            path_d = f"m0,0 l{r_width},0 l0,{r_height} l{-r_width},0 l0,{-(r_height-w_y)} l{w_x-5},0 l0,{w_height+5} l{w_width+10},0 l0,{-(w_height+10)} l{-(w_width+10)},0 l0,5 l{-(w_x-5)},0 z"
+            inversed_elm = ET.Element('path', attrib={'id': 'inversed_wrapper', 'd': path_d, 'fill': '#2b2c2e'})
+            return inversed_elm
+    
+    def _setQuestionAttribs(self, node):
+        """Set question node color and class"""
+        if (node.nodeType == node.ELEMENT_NODE and node.tagName != "text"):
+            # set question class
+            node.setAttribute("class", "qshape")
+            if node.hasAttribute("fill"):
+                # set question color
+                node.setAttribute("fill", self.qfill)
+            list(map(self._setQuestionAttribs, node.childNodes))
+
+    def _createMaskAtLayernode(self, side, mask_node_index, mlayer_node):
+        mask_node = mlayer_node.childNodes[mask_node_index]
+        if side == "Q":
+            self._setQuestionAttribs(mask_node)
+        elif side == "A":
+            mlayer_node.removeChild(mask_node)
+
+    def _generateMaskSVGsForMod(self, side, ques_type):
+        """Generate a mask for each mask node"""
+        # masks = [self._createMask(side, node_index)
+        #          for node_index in self.mnode_indexes]
+        masks = []
+
+
+        if ques_type == 'regular':
+            if side == 'Q':
+                for q_elm_idx in self.mnode_ids.keys(): # elm might be rect/g/path/shape
+                    svg_node = ET.fromstring(self.new_svg)
+                    layer_nodes = self._layerNodesFromMod(svg_node)
+                    mlayer_node = layer_nodes[-1]  # treat topmost layer as masks layer
+
+                    q_elm = mlayer_node[q_elm_idx]
+                    q_elm.set('class', 'qshape')
+                    if q_elm.get('fill'): # elms except g
+                        q_elm.set('fill', self.qfill)
+                    else: # elms only g
+                        for q_shape in q_elm.findall('*'):
+                            q_shape.set('class', 'qshape')
+                            q_shape.set('fill', self.qfill)
+
+                    q_wrapper = mlayer_node[q_elm_idx + 1]
+                    q_wrapper.set('opacity','0')
+                    inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node)
+                    svg_node.append(inversed_wrapper)
+                    xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
+                    masks.append(xml)
+
+            elif side == 'A':
+                for q_elm_idx in self.mnode_ids.keys(): # elm might be rect/g/path/shape
+                    svg_node = ET.fromstring(self.new_svg)
+                    layer_nodes = self._layerNodesFromMod(svg_node)
+                    mlayer_node = layer_nodes[-1]  # treat topmost layer as masks layer
+
+                    q_elm = mlayer_node[q_elm_idx]
+                    q_elm.set('class', 'ashape')
+                    q_elm.set('opacity', '0.2')
+
+                    q_wrapper = mlayer_node[q_elm_idx + 1]
+                    q_wrapper.set('opacity','0')
+                    inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node)
+                    svg_node.append(inversed_wrapper)
+                    xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
+                    masks.append(xml)
+                
+
+        elif ques_type == 'reverse':
+            if side == 'Q':
+                for q_g_idx in self.rnode_ids.keys(): # g is question set
+                    for q_elm_idx in self.rnode_ids[q_g_idx]:
+                        svg_node = ET.fromstring(self.new_svg)
+                        layer_nodes = self._layerNodesFromMod(svg_node)
+                        rlayer_node = layer_nodes[-2]  # treat 2nd topmost layer as reverse masks layer
+
+                        q_elm = rlayer_node[q_g_idx][q_elm_idx]
+                        q_elm.set('class', 'qshape')
+                        if q_elm.get('fill'): # elms except g
+                            q_elm.set('fill', self.qfill)
+                        else: # elms only g
+                            for q_shape in q_elm.findall('*'):
+                                q_shape.set('class', 'qshape')
+                                q_shape.set('fill', self.qfill)
+                        
+                        for q_elm_idx2 in self.rnode_ids[q_g_idx]:
+                            q_elm_2 = rlayer_node[q_g_idx][q_elm_idx2]
+                            if q_elm_2 != q_elm:
+                                q_elm_2.set('opacity', '0')
+
+                        q_wrapper = rlayer_node[q_g_idx + 1]
+                        q_wrapper.set('opacity','0')
+                        inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node)
+                        svg_node.append(inversed_wrapper)
+                        xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
+                        masks.append(xml)
+
+            elif side == 'A':
+                for q_g_idx in self.rnode_ids.keys(): # g is question set
+                    for q_elm_idx in self.rnode_ids[q_g_idx]:
+                        svg_node = ET.fromstring(self.new_svg)
+                        layer_nodes = self._layerNodesFromMod(svg_node)
+                        rlayer_node = layer_nodes[-2]  # treat 2nd topmost layer as reverse masks layer
+
+                        g_elm = rlayer_node[q_g_idx]
+                        g_elm.set('class', 'ashape')
+                        g_elm.set('opacity', '0.2')
+
+                        q_wrapper = rlayer_node[q_g_idx + 1]
+                        q_wrapper.set('opacity','0')
+                        inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node)
+                        svg_node.append(inversed_wrapper)
+                        xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
+                        masks.append(xml)
+                    
+        return masks
+
+    def _createMask(self, side, mask_node_index):
+        """Call occl_tp-specific mask generator"""
+        # mask_doc = minidom.parseString(self.new_svg.encode('utf-8'))
+        # svg_node = mask_doc.documentElement
+        # layer_nodes = self._layerNodesFrom(svg_node)
+        # # This method gets implemented differently by subclasses
+        # self._createMaskAtLayernode(side, mask_node_index, mlayer_node)
+        return svg_node.toxml()
+
+    def remove_namespace(self, xml_str):
+        str_parts = re.split("ns0:|:ns0",xml_str)
+        filtered_xml_str = ''.join(str_parts)
+        return filtered_xml_str
+        
+    def _ns(self, tagname):
+        ns = '{http://www.w3.org/2000/svg}'
+        return ns+tagname
+    ###@ edt block start
+    def _layerNodesFromMod(self, svg_node): ###
+        """Get layer nodes (topmost group nodes below the SVG node)"""
+        # assert (svg_node.nodeType == svg_node.ELEMENT_NODE)
+        assert (svg_node.tag == self._ns('svg'))
+        layer_nodes = svg_node.findall('*')
+        assert (len(layer_nodes) >= 1)
+        # last, i.e. top-most element, needs to be a layer:
+        assert (layer_nodes[-1].tag == self._ns('g'))
+        return layer_nodes
+    ###@ edt block end
+
+    def _getMnodesAndSetIdsMod(self, edit=False): ###@ edt oneitm
+        """Find mask nodes in masks layer and read/set node IDs"""
+        # mask_doc = minidom.parseString(self.new_svg.encode('utf-8'))
+        # working with xml ElementTree API
+        svg_node = ET.fromstring(self.new_svg.encode('utf-8'))
+        # cheight = float(svg_node.attributes["height"].value)
+        # cwidth = float(svg_node.attributes["width"].value)
+        # carea = cheight * cwidth
+        layer_nodes = self._layerNodesFromMod(svg_node)
+        mlayer_node = layer_nodes[-1]  # treat topmost layer as masks layer
+        rlayer_node = layer_nodes[-2]  # threat topmost 2nd layer as reverse layer ###@ add oneln
+
+        # shift = 0
+        # set ids for regular questions
+        count_ques = 1
+        for i, mnode in enumerate(mlayer_node.findall('*')):
+            if mnode.tag != self._ns('title'):
+                # i -= shift
+                # if not edit and mnode.nodeName == "rect":
+                #     # remove microscopical shapes (usually accidentally drawn)
+                #     h_attr = mnode.attributes.get("height", 0)
+                #     w_attr = mnode.attributes.get("width", 0)
+                #     height = h_attr if not h_attr else float(
+                #         mnode.attributes["height"].value)
+                #     width = w_attr if not w_attr else float(
+                #         mnode.attributes["width"].value)
+                #     if not height or not width or 100 * (height * width) / carea <= 0.01:
+                #         mlayer_node.removeChild(mnode)
+                #         shift += 1
+                #         continue
+                # self.mnode_indexes.append(i)
+                # self._removeAttribsRecursively(mnode, self.stripattr)
+                # if mnode.nodeName == "g":
+                #     # remove IDs of grouped shapes to prevent duplicates down the line
+                #     for node in mnode.childNodes:
+                #         self._removeAttribsRecursively(node, ["id"])
+                if i%2 == 1: # this is a question
+                    if not edit:
+                        self.mnode_ids[i] = "%s-singleq-%i" % (self.occl_id, count_ques)
+                        mnode.set("id", self.mnode_ids[i])
+                    else:
+                        self.mnode_ids[i] = mnode.get('id')
+
+                elif i%2 == 0: # this is a question wrapper
+                    if not edit:
+                        qwrapper_id = "%s-qwrapper-%i" % (self.occl_id, count_ques)
+                        mnode.set("id", qwrapper_id)
+                        count_ques += 1
+
+        # set ids for reverse questions
+        count_g = 1
+        for idx_rnode, rnode in enumerate(rlayer_node.findall('*')):
+            if rnode.tag != self._ns('title'):
+                if idx_rnode%2 == 1 and rnode.tag == self._ns('g'): # this is a  question group -> g
+                    if not edit:
+                        reverseq_g_id = "%s-reverseq-g-%i" % (self.occl_id, count_g)
+                        rnode.set("id", reverseq_g_id)
+                        # count_g += 1
+                        self.rnode_ids[idx_rnode] = {}
+                    for idx_rect, rect in enumerate(rnode.findall('*')): # this is a question -> rect/g
+                        if not edit:
+                            reverseq_rect_id = reverseq_g_id+'-rect-'+str(idx_rect+1)
+                            self.rnode_ids[idx_rnode][idx_rect] = reverseq_rect_id
+                        else:
+                            self.rnode_ids[idx_rnode][idx_rect] = rect.get('id')
+
+                elif idx_rnode%2 == 0: # this is a question wrapper
+                    if not edit:
+                        reverseq_wrapper_id = "%s-reverseq-wrapper-%i" % (self.occl_id, count_g)
+                        rnode.set("id", reverseq_wrapper_id)
+                        count_g += 1
+
+        return (svg_node, mlayer_node, rlayer_node)
+        
+    def generateNotesMod(self):
+        """Generate new notes"""
+        state = "default"
+        self.uniq_id = str(uuid.uuid4()).replace("-", "")
+        self.occl_id = '%s-%s' % (self.uniq_id, self.occl_tp)
+        
+        ###@ add block start
+        # mask_doc = minidom.parseString(self.new_svg.encode('utf-8'))
+        # svg_node = mask_doc.documentElement
+        # layer_nodes = self._layerNodesFrom(svg_node)
+        # mlayer_node = layer_nodes[-1]  # treat topmost layer as ao masks layer
+        
+        ###@ add block end
+        
+        # if len(self.mnode_ids.keys()) < 2:
+        #     tooltip("You did not add  a question wrapper.<br>\
+        #         Please create one more shape to be counted as question wrapper.")
+        #     return False
+        (svg_node, layer_node, rlayer_node) = self._getMnodesAndSetIdsMod() ### edt oneln
+        if not (self.mnode_ids or self.rnode_ids):
+            tooltip("No cards to generate.<br>\
+                Are you sure you set your masks correctly?")
+            return False
+
+        self.new_svg = self.remove_namespace(ET.tostring(svg_node).decode('utf-8')) # write changes to svg ###@ edt oneitm
+        omask_path = self._saveMask(self.new_svg, self.occl_id, "O")
+        reg_qmasks = self._generateMaskSVGsForMod("Q", 'regular')
+        reg_amasks = self._generateMaskSVGsForMod("A", 'regular')
+        rev_qmasks = self._generateMaskSVGsForMod("Q", 'reverse')
+        rev_amasks = self._generateMaskSVGsForMod("A", 'reverse')
+        image_path = mw.col.media.addFile(self.image_path)
+        img = fname2img(image_path)
+
+        mw.checkpoint("Adding Image Occlusion Cards")
+        for nr, idx in enumerate(self.mnode_ids.keys()):
+            note_id = self.mnode_ids[idx]
+            self._saveMaskAndReturnNote(omask_path, reg_qmasks[nr], reg_amasks[nr], img, note_id)
+
+        nr = 0                          
+        for g_idx in self.rnode_ids.keys():
+            for rnode_idx in self.rnode_ids[g_idx]:
+                note_id = self.rnode_ids[g_idx][rnode_idx]
+                self._saveMaskAndReturnNote(omask_path, rev_qmasks[nr], rev_amasks[nr], img, note_id)
+                nr += 1
+        tooltip(f"{len(reg_qmasks)+len(rev_qmasks)} cards <b>added</b><br>regular: {len(reg_qmasks)}<br>reverse: {len(rev_qmasks)}", parent=None)
+        return state
+###@ ''' external end
 
 # Different generator subclasses for different occlusion types:
 

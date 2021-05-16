@@ -32,7 +32,7 @@ from anki.hooks import wrap, addHook, runHook
 
 from .consts import *
 from .config import *
-from .add import ImgOccAdd
+from .add import ImgOccAdd, ImgOccAddMod ###@ add oneitm
 from .options import ImgOccOpts
 from .dialogs import ioHelp, ioCritical
 
@@ -74,7 +74,7 @@ def onImgOccButton(self, origin=None, image_path=None):
         oldimg = self.imgoccadd.image_path
     except AttributeError:
         oldimg = None
-    self.imgoccadd = ImgOccAdd(self, origin, oldimg)
+    self.imgoccadd = ImgOccAddMod(self, origin, oldimg) ###@ edt oneitm init
     self.imgoccadd.occlude(image_path)
 
 
@@ -242,7 +242,6 @@ def onShowAnswer(self, _old):
             scroll_pos.x(), scroll_pos.y()))
     return ret
 
-
 # Set up menus
 options_action = QAction("Image &Occlusion Enhanced Options...", mw)
 help_action = QAction("Image &Occlusion Enhanced...", mw)
@@ -253,16 +252,13 @@ mw.form.menuTools.addAction(options_action)
 mw.form.menuHelp.addAction(help_action)
 
 # Set up hooks and monkey patches
-
 # Add-on setup at profile-load time
 addHook("profileLoaded", onProfileLoaded)
-
 # aqt.editor.Editor
 addHook('setupEditorButtons', onSetupEditorButtons)
 EditorWebView.contextMenuEvent = contextMenuEvent
 Editor.setNote = wrap(Editor.setNote, onSetNote, "after")
 Editor.onImgOccButton = onImgOccButton
-
 # aqt.reviewer.Reviewer
 Reviewer._showAnswer = wrap(Reviewer._showAnswer, onShowAnswer, "around")
 if not ANKI21:
