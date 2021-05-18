@@ -1,6 +1,7 @@
 # Armanian
 del.*
 bkp/
+bkp_versions/
 # Linux FM
 .hidden
 .directory

@@ -411,6 +411,10 @@ class ImgOccAddMod(ImgOccAdd):
 
         url = QUrl.fromLocalFile(svg_edit_path)
         items = QUrlQuery()
+        global svg_edit_queryitems
+        svg_edit_queryitems += [
+            ('initFill[opacity]', '0.4'),
+        ]
         items.setQueryItems(svg_edit_queryitems)
         items.addQueryItem('initFill[color]', ofill)
         items.addQueryItem('dimensions', '{0},{1}'.format(width, height))
@@ -465,6 +469,52 @@ class ImgOccAddMod(ImgOccAdd):
         dialog.svg_edit.runOnLoaded(onSvgEditLoaded)
         dialog.visible = True
         dialog.show()
+
+    def getIONoteData(self, note):
+        """Select image based on mode and set original field contents"""
+
+        note_id = note[self.ioflds['id']]
+        image_path = img2path(note[self.ioflds['im']])
+        omask = img2path(note[self.ioflds['om']])
+
+        if note_id is None or note_id.count("-") < 2:
+            msg = "Editing unavailable: Invalid image occlusion Note ID"
+            return msg, None
+        elif not omask or not image_path:
+            msg = "Editing unavailable: Missing image or original mask"
+            return msg, None
+        if note_id.count("-") == 2: # for io default q
+            note_id_grps = note_id.split('-')
+            self.opref["note_id"] = note_id
+            self.opref["uniq_id"] = note_id_grps[0]
+            self.opref["occl_tp"] = note_id_grps[1]
+            self.opref["image"] = image_path
+            self.opref["omask"] = omask
+
+        elif note_id.count("-") == 3: # for armanian regular q
+            note_id_grps = note_id.split('-')
+            self.opref["note_id"] = note_id
+            self.opref["uniq_id"] = note_id_grps[0]
+            self.opref["occl_tp"] = note_id_grps[1]
+            q_type = note_id_grps[2]
+            q_uid = note_id_grps[3]
+            self.opref["image"] = image_path
+            self.opref["omask"] = omask
+
+        elif note_id.count("-") == 5: # for armanian reverse q
+            note_id_grps = note_id.split('-')
+            self.opref["note_id"] = note_id
+            self.opref["uniq_id"] = note_id_grps[0]
+            self.opref["occl_tp"] = note_id_grps[1]
+            q_type = note_id_grps[2]
+            g_shape_type = note_id_grps[3]
+            g_uid = note_id_grps[4]
+            rect_shape_type = note_id_grps[5]
+            rect_uid = note_id_grps[6]
+            self.opref["image"] = image_path
+            self.opref["omask"] = omask
+
+        return None, image_path
 
     def _onAddNotesButtonMod(self, choice, close, svg):
         """Get occlusion settings in and pass them to the note generator (add)"""
