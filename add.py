@@ -496,21 +496,19 @@ class ImgOccAddMod(ImgOccAdd):
             self.opref["note_id"] = note_id
             self.opref["uniq_id"] = note_id_grps[0]
             self.opref["occl_tp"] = note_id_grps[1]
-            q_type = note_id_grps[2]
+            q_type = note_id_grps[2] # q -> question
             q_uid = note_id_grps[3]
             self.opref["image"] = image_path
             self.opref["omask"] = omask
 
-        elif note_id.count("-") == 5: # for armanian reverse q
+        elif note_id.count("-") == 4: # for armanian reverse q
             note_id_grps = note_id.split('-')
             self.opref["note_id"] = note_id
             self.opref["uniq_id"] = note_id_grps[0]
             self.opref["occl_tp"] = note_id_grps[1]
             q_type = note_id_grps[2]
-            g_shape_type = note_id_grps[3]
-            g_uid = note_id_grps[4]
-            rect_shape_type = note_id_grps[5]
-            rect_uid = note_id_grps[6]
+            g_shape_uid = note_id_grps[3]
+            q_uid = note_id_grps[4]
             self.opref["image"] = image_path
             self.opref["omask"] = omask
 

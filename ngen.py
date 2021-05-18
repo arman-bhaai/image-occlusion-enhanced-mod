@@ -497,49 +497,148 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
         elif side == "A":
             mlayer_node.removeChild(mask_node)
 
-    def _generateMaskSVGsForMod(self, side, ques_type):
-        """Generate a mask for each mask node"""
-        # masks = [self._createMask(side, node_index)
-        #          for node_index in self.mnode_indexes]
+    def _generateMaskSVGsForRegular(self, side):
+        """Generate a mask for each regular questions"""
+        masks = []
+        
+        if side == 'Q':
+            for q_elm_idx in self.mnode_ids.keys(): # elm might be rect/g/path/shape
+                svg_node = ET.fromstring(self.new_svg)
+                layer_nodes = self._layerNodesFromMod(svg_node)
+                mlayer_node = layer_nodes[-1]  # treat topmost layer as masks layer
+                
+                for elm in svg_node.iter(): # hide all shapes from root
+                    elm.set('opacity', '0')
+
+                q_elm = mlayer_node[q_elm_idx]
+                q_elm.set('class', 'qshape')
+
+                if q_elm.get('fill'): # elms except g
+                    q_elm.set('fill', self.qfill)
+                else: # elms only g
+                    for q_shape in q_elm.findall('*'):
+                        if q_shape.get('fill') != 'none': # these are q shapes 
+                            q_shape.set('class', 'qshape')
+                            q_shape.set('fill', self.qfill)
+                        else: # these are ommitting shapes, shape fill is set to none
+                            q_shape.set('fill', self.hider_col)
+                            q_shape.set('class', 'hider')
+
+                # preserved elms -> root, layers, titles, current q elms
+                preserved_shapes_all = [svg_node, svg_node[0], svg_node[0][0], svg_node[1], 
+                                    svg_node[1][0], svg_node[2], svg_node[2][0]]
+                if q_elm.tag == self._ns('rect'): # this is a simple single q shape
+                    preserved_shapes_ques = [q_elm]
+                elif q_elm.tag == self._ns('g'): # this is a g containing q shapes and hiders
+                    preserved_shapes_all += [q_elm]
+                    preserved_shapes_ques = svg_node.find('.//*[@class="qshape"]').findall('*') # preserve shapes with parent having class=qshape
+                preserved_shapes_all += preserved_shapes_ques
+                
+                q_wrapper = mlayer_node[q_elm_idx + 1]
+
+                for elm in svg_node.iter():
+                    if elm in preserved_shapes_all: # unhide current q shapes and default shapes
+                        del elm.attrib['opacity']
+
+                for elm in svg_node.iter(): # set heavy fill to current q shapes and hiders
+                    if elm in preserved_shapes_ques:
+                        elm.set('opacity', '1')
+
+                inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node, self.regular_inverse_fill)
+                svg_node.append(inversed_wrapper)
+                xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
+                masks.append(xml)
+
+        elif side == 'A':
+            for q_elm_idx in self.mnode_ids.keys(): # elm might be rect/g/path/shape
+                svg_node = ET.fromstring(self.new_svg)
+                layer_nodes = self._layerNodesFromMod(svg_node)
+                mlayer_node = layer_nodes[-1]  # treat topmost layer as masks layer
+                
+                for elm in svg_node.iter(): # hide all shapes from root
+                    elm.set('opacity', '0')
+
+                q_elm = mlayer_node[q_elm_idx]
+                q_elm.set('class', 'ashape')
+
+                if q_elm.get('fill'): # elms except g
+                    q_elm.set('fill', self.qfill)
+                else: # elms only g
+                    for q_shape in q_elm.findall('*'):
+                        if q_shape.get('fill') != 'none': # these are q shapes 
+                            q_shape.set('class', 'ashape')
+                            q_shape.set('fill', self.qfill)
+                        else: # these are ommitting shapes, shape fill is set to none
+                            q_shape.set('fill', self.hider_col)
+                            q_shape.set('class', 'hider')
+
+                # preserved elms -> root, layers, titles, current q elms
+                preserved_shapes_all = [svg_node, svg_node[0], svg_node[0][0], svg_node[1], 
+                                    svg_node[1][0], svg_node[2], svg_node[2][0]]
+                if q_elm.tag == self._ns('rect'): # this is a simple single q shape
+                    preserved_shapes_ques = [q_elm]
+                elif q_elm.tag == self._ns('g'): # this is a g containing q shapes and hiders
+                    preserved_shapes_all += [q_elm]
+                    preserved_shapes_ques = svg_node.find('.//*[@class="ashape"]').findall('*') # preserve shapes with parent having class=qshape
+                preserved_shapes_all += preserved_shapes_ques
+                
+                q_wrapper = mlayer_node[q_elm_idx + 1]
+
+                for elm in svg_node.iter():
+                    if elm in preserved_shapes_all: # unhide current q shapes and default shapes
+                        del elm.attrib['opacity']
+
+                for elm in svg_node.iter(): # set slight fill to q shapes and heavy fill to hiders
+                    if elm in preserved_shapes_ques:
+                        if elm.get('class') == 'hider':
+                            elm.set('opacity', '1')
+                        else:
+                            elm.set('opacity', '0.3')
+
+                q_wrapper = mlayer_node[q_elm_idx + 1]
+                inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node, self.regular_inverse_fill)
+                svg_node.append(inversed_wrapper)
+                xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
+                masks.append(xml)
+        return masks
+                
+    def _generateMaskSVGsForReverse(self, side):
+        """Generate a mask for each reverse question """
         masks = []
 
-
-        if ques_type == 'regular':
-            if side == 'Q':
-                for q_elm_idx in self.mnode_ids.keys(): # elm might be rect/g/path/shape
+        if side == 'Q':
+            for q_g_idx in self.rnode_ids.keys(): # g is question set
+                for q_elm_idx in self.rnode_ids[q_g_idx]:
                     svg_node = ET.fromstring(self.new_svg)
                     layer_nodes = self._layerNodesFromMod(svg_node)
-                    mlayer_node = layer_nodes[-1]  # treat topmost layer as masks layer
-                    
+                    rlayer_node = layer_nodes[-2]  # treat 2nd topmost layer as reverse masks layer
+
                     for elm in svg_node.iter(): # hide all shapes from root
                         elm.set('opacity', '0')
 
-                    q_elm = mlayer_node[q_elm_idx]
+                    qset_elm = rlayer_node[q_g_idx]
+                    qset_elm.set('class', 'qset')
+                    q_elm = qset_elm[q_elm_idx] # this is a single question -> rect/g
                     q_elm.set('class', 'qshape')
-
                     if q_elm.get('fill'): # elms except g
                         q_elm.set('fill', self.qfill)
                     else: # elms only g
                         for q_shape in q_elm.findall('*'):
-                            if q_shape.get('fill') != 'none': # these are q shapes 
-                                q_shape.set('class', 'qshape')
-                                q_shape.set('fill', self.qfill)
-                            else: # these are ommitting shapes, shape fill is set to none
-                                q_shape.set('fill', self.hider_col)
-                                q_shape.set('class', 'hider')
+                            q_shape.set('class', 'qshape')
+                            q_shape.set('fill', self.qfill)
 
                     # preserved elms -> root, layers, titles, current q elms
                     preserved_shapes_all = [svg_node, svg_node[0], svg_node[0][0], svg_node[1], 
-                                        svg_node[1][0], svg_node[2], svg_node[2][0]]
+                                            svg_node[1][0], svg_node[2], svg_node[2][0], qset_elm]
                     if q_elm.tag == self._ns('rect'): # this is a simple single q shape
                         preserved_shapes_ques = [q_elm]
-                    elif q_elm.tag == self._ns('g'): # this is a g containing q shapes and hiders
+                    elif q_elm.tag == self._ns('g'): # this is a g containing attached q shape
                         preserved_shapes_all += [q_elm]
-                        preserved_shapes_ques = svg_node.find('.//*[@class="qshape"]').findall('*') # preserve shapes with parent having class=qshape
+                        preserved_shapes_ques = q_elm.findall('*')
+                    preserved_shapes_ques += [i for i in  qset_elm.findall('*') if i.get('fill') == 'none']
                     preserved_shapes_all += preserved_shapes_ques
-                    
-                    q_wrapper = mlayer_node[q_elm_idx + 1]
-                    # q_wrapper.set('opacity','0')
+
+                    q_wrapper = rlayer_node[q_g_idx + 1]
 
                     for elm in svg_node.iter():
                         if elm in preserved_shapes_all: # unhide current q shapes and default shapes
@@ -547,199 +646,71 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
 
                     for elm in svg_node.iter(): # set heavy fill to current q shapes and hiders
                         if elm in preserved_shapes_ques:
-                            # del elm.attrib['fill-opacity']
-                            elm.set('opacity', '1')
-                            # elm.set('fill-opacity', '1')
-
+                            if not elm.get('fill') == 'none':
+                                elm.set('opacity', '1')
+                            else:
+                                elm.set('opacity', '1')
+                                elm.set('fill', self.hider_col)
+                                elm.set('class', 'hider')
+                            
                     inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node, self.regular_inverse_fill)
                     svg_node.append(inversed_wrapper)
                     xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
                     masks.append(xml)
 
-            elif side == 'A':
-                for q_elm_idx in self.mnode_ids.keys(): # elm might be rect/g/path/shape
+        elif side == 'A':
+            for q_g_idx in self.rnode_ids.keys(): # g is question set
+                for q_elm_idx in self.rnode_ids[q_g_idx]:
                     svg_node = ET.fromstring(self.new_svg)
                     layer_nodes = self._layerNodesFromMod(svg_node)
-                    mlayer_node = layer_nodes[-1]  # treat topmost layer as masks layer
-                    
+                    rlayer_node = layer_nodes[-2]  # treat 2nd topmost layer as reverse masks layer
+
                     for elm in svg_node.iter(): # hide all shapes from root
                         elm.set('opacity', '0')
 
-                    q_elm = mlayer_node[q_elm_idx]
-                    q_elm.set('class', 'ashape')
-
+                    qset_elm = rlayer_node[q_g_idx]
+                    qset_elm.set('class', 'qset')
+                    q_elm = qset_elm[q_elm_idx] # this is a single question -> rect/g
+                    q_elm.set('class', 'qshape')
                     if q_elm.get('fill'): # elms except g
                         q_elm.set('fill', self.qfill)
                     else: # elms only g
                         for q_shape in q_elm.findall('*'):
-                            if q_shape.get('fill') != 'none': # these are q shapes 
-                                q_shape.set('class', 'ashape')
-                                q_shape.set('fill', self.qfill)
-                            else: # these are ommitting shapes, shape fill is set to none
-                                q_shape.set('fill', self.hider_col)
-                                q_shape.set('class', 'hider')
+                            q_shape.set('class', 'qshape')
+                            q_shape.set('fill', self.qfill)
 
                     # preserved elms -> root, layers, titles, current q elms
                     preserved_shapes_all = [svg_node, svg_node[0], svg_node[0][0], svg_node[1], 
-                                        svg_node[1][0], svg_node[2], svg_node[2][0]]
+                                        svg_node[1][0], svg_node[2], svg_node[2][0], qset_elm]
+
                     if q_elm.tag == self._ns('rect'): # this is a simple single q shape
                         preserved_shapes_ques = [q_elm]
-                    elif q_elm.tag == self._ns('g'): # this is a g containing q shapes and hiders
+                    elif q_elm.tag == self._ns('g'): # this is a g containing attached q shape
                         preserved_shapes_all += [q_elm]
-                        preserved_shapes_ques = svg_node.find('.//*[@class="ashape"]').findall('*') # preserve shapes with parent having class=qshape
+                        preserved_shapes_ques = q_elm.findall('*')
+                    preserved_shapes_ques += [i for i in  qset_elm.findall('*') if i.get('fill') == 'none']
                     preserved_shapes_all += preserved_shapes_ques
-                    
-                    q_wrapper = mlayer_node[q_elm_idx + 1]
-                    # q_wrapper.set('opacity','0')
+
+                    q_wrapper = rlayer_node[q_g_idx + 1]
 
                     for elm in svg_node.iter():
                         if elm in preserved_shapes_all: # unhide current q shapes and default shapes
                             del elm.attrib['opacity']
 
-                    for elm in svg_node.iter(): # set slight fill to q shapes and heavy fill to hiders
+                    for elm in svg_node.iter(): # set heavy fill to current q shapes and hiders
                         if elm in preserved_shapes_ques:
-                            # del elm.attrib['fill-opacity']
-                            if elm.get('class') == 'hider':
-                                elm.set('opacity', '1')
-                                # elm.set('fill-opacity', '1')
-                            else:
+                            if not elm.get('fill') == 'none':
                                 elm.set('opacity', '0.3')
-                                # elm.set('fill-opacity', '0.2')
+                            else:
+                                elm.set('opacity', '1')
+                                elm.set('fill', self.hider_col)
+                                elm.set('class', 'hider')
 
-                    q_wrapper = mlayer_node[q_elm_idx + 1]
-                    # q_wrapper.set('opacity','0')
-                    inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node, self.regular_inverse_fill)
+                    inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node, self.reverse_inverse_fill)
                     svg_node.append(inversed_wrapper)
                     xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
-                    masks.append(xml)
-                
-
-        elif ques_type == 'reverse':
-            if side == 'Q':
-                for q_g_idx in self.rnode_ids.keys(): # g is question set
-                    for q_elm_idx in self.rnode_ids[q_g_idx]:
-                        svg_node = ET.fromstring(self.new_svg)
-                        layer_nodes = self._layerNodesFromMod(svg_node)
-                        rlayer_node = layer_nodes[-2]  # treat 2nd topmost layer as reverse masks layer
-
-                        for elm in svg_node.iter(): # hide all shapes from root
-                            elm.set('opacity', '0')
-
-                        qset_elm = rlayer_node[q_g_idx]
-                        qset_elm.set('class', 'qset')
-                        q_elm = qset_elm[q_elm_idx] # this is a single question -> rect/g
-                        q_elm.set('class', 'qshape')
-                        if q_elm.get('fill'): # elms except g
-                            q_elm.set('fill', self.qfill)
-                        else: # elms only g
-                            for q_shape in q_elm.findall('*'):
-                                q_shape.set('class', 'qshape')
-                                q_shape.set('fill', self.qfill)
-
-                        # preserved elms -> root, layers, titles, current q elms
-                        preserved_shapes_all = [svg_node, svg_node[0], svg_node[0][0], svg_node[1], 
-                                                svg_node[1][0], svg_node[2], svg_node[2][0], qset_elm]
-                        if q_elm.tag == self._ns('rect'): # this is a simple single q shape
-                            preserved_shapes_ques = [q_elm]
-                        elif q_elm.tag == self._ns('g'): # this is a g containing attached q shape
-                            preserved_shapes_all += [q_elm]
-                            preserved_shapes_ques = q_elm.findall('*')
-                        preserved_shapes_ques += [i for i in  qset_elm.findall('*') if i.get('fill') == 'none']
-                        preserved_shapes_all += preserved_shapes_ques
-
-                        q_wrapper = rlayer_node[q_g_idx + 1]
-                        # q_wrapper.set('opacity','0')
-
-                        for elm in svg_node.iter():
-                            if elm in preserved_shapes_all: # unhide current q shapes and default shapes
-                                del elm.attrib['opacity']
-
-                        for elm in svg_node.iter(): # set heavy fill to current q shapes and hiders
-                            if elm in preserved_shapes_ques:
-                                if not elm.get('fill') == 'none':
-                                    # del elm.attrib['fill-opacity']
-                                    elm.set('opacity', '1')
-                                    # elm.set('fill-opacity', '1')
-                                else:
-                                    elm.set('opacity', '1')
-                                    elm.set('fill', self.hider_col)
-                                    elm.set('class', 'hider')
-                                
-                        inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node, self.regular_inverse_fill)
-                        svg_node.append(inversed_wrapper)
-                        xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
-                        masks.append(xml)
-
-            elif side == 'A':
-                for q_g_idx in self.rnode_ids.keys(): # g is question set
-                    for q_elm_idx in self.rnode_ids[q_g_idx]:
-                        svg_node = ET.fromstring(self.new_svg)
-                        layer_nodes = self._layerNodesFromMod(svg_node)
-                        rlayer_node = layer_nodes[-2]  # treat 2nd topmost layer as reverse masks layer
-
-                        for elm in svg_node.iter(): # hide all shapes from root
-                            elm.set('opacity', '0')
-
-                        qset_elm = rlayer_node[q_g_idx]
-                        qset_elm.set('class', 'qset')
-                        q_elm = qset_elm[q_elm_idx] # this is a single question -> rect/g
-                        q_elm.set('class', 'qshape')
-                        if q_elm.get('fill'): # elms except g
-                            q_elm.set('fill', self.qfill)
-                        else: # elms only g
-                            for q_shape in q_elm.findall('*'):
-                                q_shape.set('class', 'qshape')
-                                q_shape.set('fill', self.qfill)
-
-                        # preserved elms -> root, layers, titles, current q elms
-                        preserved_shapes_all = [svg_node, svg_node[0], svg_node[0][0], svg_node[1], 
-                                            svg_node[1][0], svg_node[2], svg_node[2][0], qset_elm]
-
-                        if q_elm.tag == self._ns('rect'): # this is a simple single q shape
-                            preserved_shapes_ques = [q_elm]
-                        elif q_elm.tag == self._ns('g'): # this is a g containing attached q shape
-                            preserved_shapes_all += [q_elm]
-                            preserved_shapes_ques = q_elm.findall('*')
-                        # preserved_shapes_ques += [qset_elm]
-                        # elif q_elm.tag == self._ns('g'): # this is a g containing q shapes and hiders
-                        #     preserved_shapes_all += [q_elm]
-                        #     preserved_shapes_ques = svg_node.find('.//*[@class="qshape"]').findall('*') # preserve shapes with parent having class=qshape
-                        preserved_shapes_ques += [i for i in  qset_elm.findall('*') if i.get('fill') == 'none']
-                        preserved_shapes_all += preserved_shapes_ques
-
-                        q_wrapper = rlayer_node[q_g_idx + 1]
-                        # q_wrapper.set('opacity','0')
-
-                        for elm in svg_node.iter():
-                            if elm in preserved_shapes_all: # unhide current q shapes and default shapes
-                                del elm.attrib['opacity']
-
-                        for elm in svg_node.iter(): # set heavy fill to current q shapes and hiders
-                            if elm in preserved_shapes_ques:
-                                if not elm.get('fill') == 'none':
-                                    # del elm.attrib['fill-opacity']
-                                    elm.set('opacity', '0.3')
-                                    # elm.set('fill-opacity', '1')
-                                else:
-                                    elm.set('opacity', '1')
-                                    elm.set('fill', self.hider_col)
-                                    elm.set('class', 'hider')
-
-                        inversed_wrapper = self.inverse_wrapper(q_wrapper, svg_node, self.reverse_inverse_fill)
-                        svg_node.append(inversed_wrapper)
-                        xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
-                        masks.append(xml)
-                    
+                    masks.append(xml)          
         return masks
-
-    def _createMask(self, side, mask_node_index):
-        """Call occl_tp-specific mask generator"""
-        # mask_doc = minidom.parseString(self.new_svg.encode('utf-8'))
-        # svg_node = mask_doc.documentElement
-        # layer_nodes = self._layerNodesFrom(svg_node)
-        # # This method gets implemented differently by subclasses
-        # self._createMaskAtLayernode(side, mask_node_index, mlayer_node)
-        return svg_node.toxml()
 
     def remove_namespace(self, xml_str):
         str_parts = re.split("ns0:|:ns0",xml_str)
@@ -756,6 +727,7 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
             if striped_attrs:
                 elm.attrib = striped_attrs
         return svg_root
+        
     ###@ edt block start
     def _layerNodesFromMod(self, svg_node): ###
         """Get layer nodes (topmost group nodes below the SVG node)"""
@@ -831,18 +803,8 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
                     for idx_q_elm, q_elm in enumerate(rnode.findall('*')): # this is a question / hider -> rect / g / hider-rect
                         if not edit:
                             if not q_elm.get('fill') == 'none': # q elms except hider-rects
-                                # q_elm.set('fill', self.qfill)
-                                q_elm_id = reverseq_g_id+'-qelm-'+str(idx_q_elm+1)
+                                q_elm_id = reverseq_g_id+'-q'+str(idx_q_elm+1)
                                 self.rnode_ids[idx_rnode][idx_q_elm] = q_elm_id
-                            # else: # elms only g
-                            #     for q_shape in q_elm.findall('*'):
-                            #         if q_shape.get('fill') != 'none': # these are q shapes 
-                            #             q_shape.set('class', 'ashape')
-                            #             q_shape.set('fill', self.qfill)
-                            #         else: # these are ommitting shapes, shape fill is set to none
-                            #             q_shape.set('fill', self.hider_col)
-                            #             q_shape.set('class', 'hider')
-
                         else:
                             self.rnode_ids[idx_rnode][idx_q_elm] = q_elm.get('id')
 
@@ -861,12 +823,6 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
         self.uniq_id = str(uuid.uuid4()).replace("-", "")
         self.occl_id = '%s-%s' % (self.uniq_id, self.occl_tp)
         
-        ###@ add block start
-        # mask_doc = minidom.parseString(self.new_svg.encode('utf-8'))
-        # svg_node = mask_doc.documentElement
-        # layer_nodes = self._layerNodesFrom(svg_node)
-        # mlayer_node = layer_nodes[-1]  # treat topmost layer as ao masks layer
-        
         ###@ add block end
         
         # if len(self.mnode_ids.keys()) < 2:
@@ -882,10 +838,10 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
         svg_node = self.strip_attr(svg_node)
         self.new_svg = self.remove_namespace(ET.tostring(svg_node).decode('utf-8')) # write changes to svg ###@ edt oneitm
         omask_path = self._saveMask(self.new_svg, self.occl_id, "O")
-        reg_qmasks = self._generateMaskSVGsForMod("Q", 'regular')
-        reg_amasks = self._generateMaskSVGsForMod("A", 'regular')
-        rev_qmasks = self._generateMaskSVGsForMod("Q", 'reverse')
-        rev_amasks = self._generateMaskSVGsForMod("A", 'reverse')
+        reg_qmasks = self._generateMaskSVGsForRegular("Q")
+        reg_amasks = self._generateMaskSVGsForRegular("A")
+        rev_qmasks = self._generateMaskSVGsForReverse("Q")
+        rev_amasks = self._generateMaskSVGsForReverse("A")
         image_path = mw.col.media.addFile(self.image_path)
         img = fname2img(image_path)
 
