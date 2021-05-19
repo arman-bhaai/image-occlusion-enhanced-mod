@@ -309,3 +309,211 @@ def update_template(col, old_version):
     io_model['css'] += "\n".join(additions[2])
     col.models.save()
     return io_model
+
+
+###@ edt block start
+iocard_front = """\
+{{#%(src_img)s}}
+<div id="io-header">{{%(header)s}}</div>
+<div id="io-qextra">{{%(extraone)s}}</div>
+<div id="io-wrapper">
+  <div id="io-overlay">{{%(que)s}}</div>
+  <div id="io-original">{{%(src_img)s}}</div>
+</div>
+<div id="io-footer">{{%(footer)s}}</div>
+
+<script>
+// Prevent original image from loading before mask
+aFade = 50, qFade = 0;
+var mask = document.querySelector('#io-overlay>img');
+function loaded() {
+    var original = document.querySelector('#io-original');
+    original.style.visibility = "visible";
+}
+if (mask === null || mask.complete) {
+    loaded();
+} else {
+    mask.addEventListener('load', loaded);
+}
+</script>
+{{/%(src_img)s}}
+""" % \
+    {'que': IO_FLDS['qm'],
+     'ans': IO_FLDS['am'],
+     'svg': IO_FLDS['om'],
+     'src_img': IO_FLDS['im'],
+     'header': IO_FLDS['hd'],
+     'footer': IO_FLDS['ft'],
+     'remarks': IO_FLDS['rk'],
+     'sources': IO_FLDS['sc'],
+     'extraone': IO_FLDS['e1'],
+     'extratwo': IO_FLDS['e2'],
+     'extrathree': IO_FLDS['e3']}
+
+
+iocard_back = """\
+{{#%(src_img)s}}
+<div id="io-header">{{%(header)s}}</div>
+{{#%(extraone)s}}
+<div id="io-qextra">{{%(extraone)s}}</div>
+{{/%(extraone)s}}
+<div id="io-wrapper">
+  <div id="io-overlay">{{%(ans)s}}</div>
+  <div id="io-original">{{%(src_img)s}}</div>
+</div>
+{{#%(footer)s}}<div id="io-footer">{{%(footer)s}}</div>{{/%(footer)s}}
+<button id="io-revl-btn" onclick="toggle();">Toggle Masks</button>
+<div id="io-extra-wrapper">
+  <div id="io-extra">
+    {{#%(extratwo)s}}
+    <div id="io-aextra">
+      <div class="io-field-descr">%(extratwo)s</div>{{%(extratwo)s}}
+    </div>
+    {{/%(extratwo)s}}
+    {{#%(extrathree)s}}
+    <div id="io-mnemonics">
+      <div class="io-field-descr">%(extrathree)s</div>{{%(extrathree)s}}
+    </div>
+    {{/%(extrathree)s}}
+    {{#%(remarks)s}}
+      <div class="io-extra-entry">
+        <div class="io-field-descr">%(remarks)s</div>{{%(remarks)s}}
+      </div>
+    {{/%(remarks)s}}
+    {{#%(sources)s}}
+      <div class="io-extra-entry">
+        <div class="io-field-descr">%(sources)s</div>{{%(sources)s}}
+      </div>
+    {{/%(sources)s}}
+  </div>
+</div>
+
+<script>
+// Toggle answer mask on clicking the image
+var toggle = function() {
+  var amask = document.getElementById('io-overlay');
+  if (amask.style.display === 'block' || amask.style.display === '')
+    amask.style.display = 'none';
+  else
+    amask.style.display = 'block'
+}
+
+// Prevent original image from loading before mask
+aFade = 50, qFade = 0;
+var mask = document.querySelector('#io-overlay>img');
+function loaded() {
+    var original = document.querySelector('#io-original');
+    original.style.visibility = "visible";
+}
+if (mask === null || mask.complete) {
+    loaded();
+} else {
+    mask.addEventListener('load', loaded);
+}
+</script>
+{{/%(src_img)s}}
+""" % \
+    {'que': IO_FLDS['qm'],
+     'ans': IO_FLDS['am'],
+     'svg': IO_FLDS['om'],
+     'src_img': IO_FLDS['im'],
+     'header': IO_FLDS['hd'],
+     'footer': IO_FLDS['ft'],
+     'remarks': IO_FLDS['rk'],
+     'sources': IO_FLDS['sc'],
+     'extraone': IO_FLDS['e1'],
+     'extratwo': IO_FLDS['e2'],
+     'extrathree': IO_FLDS['e3']}
+
+iocard_css = """\
+/* GENERAL CARD STYLE */
+.card {
+  font-family: "Helvetica LT Std", Helvetica, Arial, Sans;
+  font-size: 150%;
+  text-align: center;
+  color: black;
+  background-color: white;
+}
+
+/* OCCLUSION CSS START - don't edit this */
+#io-overlay {
+  position:absolute;
+  top:0;
+  width:100%;
+  z-index:3
+}
+
+#io-original {
+  position:relative;
+  top:0;
+  width:100%;
+  z-index:2;
+  visibility: hidden;
+}
+
+#io-wrapper {
+  position:relative;
+  width: 100%;
+}
+/* OCCLUSION CSS END */
+
+/* OTHER STYLES */
+#io-header{
+  font-size: 1.1em;
+  margin-bottom: 0.2em;
+}
+
+#io-footer{
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0.8em;
+  font-style: italic;
+}
+
+#io-qextra, #io-aextra, #io-mnemonics{
+  /* the wrapper is needed to center the
+  left-aligned blocks below it */
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0.5em;
+}
+
+#io-extra{
+  text-align:center;
+  display: inline-block;
+}
+
+.io-extra-entry{
+  margin-top: 0.8em;
+  font-size: 0.9em;
+  text-align:left;
+}
+
+.io-field-descr{
+  margin-bottom: 0.2em;
+  font-weight: bold;
+  font-size: 1em;
+}
+
+#io-revl-btn {
+  font-size: 0.5em;
+}
+
+/* ADJUSTMENTS FOR MOBILE DEVICES */
+
+.mobile .card, .mobile #content {
+  font-size: 120%;
+  margin: 0;
+}
+
+.mobile #io-qextra, .mobile #io-aextra, .mobile #io-mnemonics, {
+  width: 95%;
+}
+
+.mobile #io-revl-btn {
+  font-size: 0.8em;
+}
+"""
+###@ edt block end

@@ -42,6 +42,25 @@ IO_FLDS = {
 IO_FLDS_IDS = ["id", "hd", "im", "qm", "ft", "rk",
                "sc", "e1", "e2", "am", "om"]
 
+###@ add/edt block start
+IO_FLDS.update({
+    'id': "ID (hidden)",
+    'e1': 'Question Extra',
+    'e2': 'Answer Extra',
+    'e3': 'Mnemonics',
+    'im': "Image",
+    'qm': "Question Mask",
+    'om': "Original Mask",
+    'am': "Answer Mask",
+    'hd': "Header",
+    'ft': "Footer",
+    'rk': "Remarks",
+    'sc': "Sources",
+})
+
+IO_FLDS_IDS = ['id', 'e1', 'e2', 'e3', 'im', 'qm', 'om', 'am', 'hd', 'ft', 'rk', 'sc']
+###@ add block end
+
 # TODO: Use IDs instead of names to make these compatible with self.ioflds
 
 # fields that aren't user-editable
@@ -69,6 +88,8 @@ default_conf_syncd = {'version': 1.25,
                       'fsize': 24,
                       'skip': [IO_FLDS["e1"], IO_FLDS["e2"]],
                       'flds': IO_FLDS}
+
+default_conf_syncd['skip'].append(IO_FLDS["e3"]) ###@ add oneln
 
 from . import template
 
