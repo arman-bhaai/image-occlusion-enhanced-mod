@@ -1,12 +1,12 @@
 {
-    "name": "Image Occlusion Enhanced",
+    "name": "Image Occlusion Enhanced Mod",
     "package": "1374772155",
     "ankiweb_id": "1374772155",
     "author": "Glutanimate",
     "version": "v1.3.0-alpha6",
     "homepage": "https://github.com/glutanimate/image-occlusion-enhanced",
     "conflicts": [
-        "image_occlusion_enhanced"
+        "image_occlusion_enhanced_mod"
     ],
     "mod": 1588040218
 }

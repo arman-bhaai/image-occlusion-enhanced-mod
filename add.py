@@ -389,6 +389,54 @@ class ImgOccAddMod(ImgOccAdd):
     def __init__(self, editor, origin, oldimg=None):
         super().__init__(editor, origin, oldimg)
 
+    def _onEditNotesButton(self, choice, svg):
+        """Get occlusion settings and pass them to the note generator (edit)"""
+        dialog = self.imgoccedit
+
+        r1 = self.getUserInputs(dialog, edit=True)
+        if r1 is False:
+            return False
+        (fields, tags) = r1
+        did = self.opref["did"]
+        old_occl_tp = self.opref["occl_tp"]
+
+        noteGenerator = genByKey(choice, old_occl_tp)
+        gen = ImgOccNoteGeneratorMod(self.ed, svg, self.image_path,
+                            self.opref, tags, fields, did)
+        r = gen.updateNotes()
+        if r is False:
+            return False
+
+        if r != "reset":
+            # no media cache/collection reset required
+            dialog.close()
+
+        else:
+            # Refresh image cache
+            dialog.svg_edit.page().profile().clearHttpCache()
+            dialog.close()
+
+            # Force EditCurrent and Browser editor instances reload
+            # in order to make use of refreshed image cache
+            if not self.origin == "addcards":
+                def onToHtmlCallback(html):
+                    if self.ed.web:
+                        self.ed.web.reload()
+                        self.ed.web.setHtml(html)
+                        self.ed.loadNote()
+                self.ed.web.page().toHtml(onToHtmlCallback)  # async execution
+
+            # write a dummy file to update collection.media modtime and
+            # force sync
+            media_dir = mw.col.media.dir()
+            fpath = os.path.join(media_dir, "syncdummy.txt")
+            if not os.path.isfile(fpath):
+                with open(fpath, "w") as f:
+                    f.write("io sync dummy")
+            os.remove(fpath)
+
+        mw.reset()  # FIXME: causes glitches in editcurrent mode
+
     def callImgOccEdit(self, width, height):
         """Set up variables, call and prepare ImgOccEdit"""
         ofill = self.sconf['ofill']
@@ -491,24 +539,13 @@ class ImgOccAddMod(ImgOccAdd):
             self.opref["image"] = image_path
             self.opref["omask"] = omask
 
-        elif note_id.count("-") == 3: # for armanian regular q
+        elif note_id.count("-") == 3: # for armanian regular and reverse q
             note_id_grps = note_id.split('-')
             self.opref["note_id"] = note_id
             self.opref["uniq_id"] = note_id_grps[0]
             self.opref["occl_tp"] = note_id_grps[1]
             q_type = note_id_grps[2] # q -> question
-            q_uid = note_id_grps[3]
-            self.opref["image"] = image_path
-            self.opref["omask"] = omask
-
-        elif note_id.count("-") == 4: # for armanian reverse q
-            note_id_grps = note_id.split('-')
-            self.opref["note_id"] = note_id
-            self.opref["uniq_id"] = note_id_grps[0]
-            self.opref["occl_tp"] = note_id_grps[1]
-            q_type = note_id_grps[2]
-            g_shape_uid = note_id_grps[3]
-            q_uid = note_id_grps[4]
+            card_count = note_id_grps[3]
             self.opref["image"] = image_path
             self.opref["omask"] = omask
 

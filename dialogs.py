@@ -158,7 +158,7 @@ take a while)</i>
 # Message dialog utility functions
 
 
-def ioCritical(msgkey, title="Image Occlusion Enhanced Error", text="",
+def ioCritical(msgkey, title="Image Occlusion Enhanced Mod Error", text="",
                parent=None, help=None):
     msgfunc = QMessageBox.critical
     if help:
@@ -176,7 +176,7 @@ def ioCritical(msgkey, title="Image Occlusion Enhanced Error", text="",
     return r
 
 
-def ioAskUser(msgkey, title="Image Occlusion Enhanced", parent=None, text="",
+def ioAskUser(msgkey, title="Image Occlusion Enhanced Mod", parent=None, text="",
               help="", defaultno=False, msgfunc=None):
     """Show a yes/no question. Return true if yes.
     based on askUser by Damien Elmes"""
@@ -199,7 +199,7 @@ def ioAskUser(msgkey, title="Image Occlusion Enhanced", parent=None, text="",
     return r == QMessageBox.Yes
 
 
-def ioInfo(msgkey, title="Image Occlusion Enhanced", text="", parent=None,
+def ioInfo(msgkey, title="Image Occlusion Enhanced Mod", text="", parent=None,
            buttons=None, default=None, msgfunc=None):
     if not parent:
         parent = mw.app.activeWindow()
@@ -214,7 +214,7 @@ def ioInfo(msgkey, title="Image Occlusion Enhanced", text="", parent=None,
     return msgfunc(parent, title, text, buttons, default)
 
 
-def ioHelp(msgkey, title="Image Occlusion Enhanced Help",
+def ioHelp(msgkey, title="Image Occlusion Enhanced Mod Help",
            text="", parent=None):
     """Display an info message or a predefined help section"""
     if not parent:

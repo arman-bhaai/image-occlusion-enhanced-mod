@@ -243,8 +243,10 @@ def onShowAnswer(self, _old):
     return ret
 
 # Set up menus
-options_action = QAction("Image &Occlusion Enhanced Options...", mw)
-help_action = QAction("Image &Occlusion Enhanced...", mw)
+###@ edt block start
+options_action = QAction("Image &Occlusion Enhanced Mod Options...", mw)
+help_action = QAction("Image &Occlusion Enhanced Mod...", mw)
+###@ edt block end
 options_action.triggered.connect(onIoSettings)
 mw.addonManager.setConfigAction(__name__, onIoSettings)
 help_action.triggered.connect(onIoHelp)
