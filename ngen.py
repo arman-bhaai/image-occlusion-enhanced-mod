@@ -532,7 +532,7 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
         # add note_id to missing shapes
         note_nr_max = max_tnode_note_nr
         new_count = 0
-        
+        # for regular questions
         for nr, idx in enumerate(self.mnode_ids.keys()):
             mnode_id = mnode_ids[idx]
             new_mnode_id = None
@@ -552,17 +552,12 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
                 new_mnode_id = self.occl_id + '-regularq_new_card-' + str(note_nr)
                 new_count += 1
                 nids[new_mnode_id] = None
-            else:
-                # update occlusion type
-                # mnode_id_nr = mnode_id.split('-')[-1]
-                # new_mnode_id = self.occl_id + '-' + mnode_id_nr
-                # nids[new_mnode_id] = nids.pop(mnode_id)
-                pass
+
             if new_mnode_id:
                 mnode.set("id", new_mnode_id)
                 self.mnode_ids[idx] = new_mnode_id
 
-            logging.debug("=====================")
+            logging.debug("========= regular q ============")
             logging.debug("nr %s", nr)
             logging.debug("idx %s", idx)
             logging.debug("mnode_id %s", mnode_id)
@@ -570,9 +565,45 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
             logging.debug("note_nr_max %s", note_nr_max)
             logging.debug("new_mnode_id %s", new_mnode_id)
 
+        # for reverse questions
+        for qset_idx in self.rnode_ids.keys():
+            for nr, q_idx in enumerate(self.rnode_ids[qset_idx].keys()):
+                rnode_id = rnode_ids[qset_idx][q_idx]
+                new_rnode_id = None
+                rnode = rlayer_node[qset_idx][q_idx]
+                
+                if rnode_id not in exstg_tnode_note_ids: # for newly added shapes
+                    logging.info('new shapes added')
+                    if available_nrs: # if some existing shapes have been deleted before 
+                        logging.info('some existing shapes deleted on svg')
+                        # use gap in note_id numbering
+                        note_nr = available_nrs.pop(0)
+                    else: # if no existing shape has been deleted before, and only newly added shapes
+                        logging.info('no existing shape deleted on svg')
+                        # increment maximum note_id number
+                        note_nr_max = note_nr_max + 1
+                        note_nr = note_nr_max
+                    new_rnode_id = self.occl_id + '-reverseq_new_card-' + str(note_nr)
+                    new_count += 1
+                    nids[new_rnode_id] = None
+
+                if new_rnode_id:
+                    rnode.set("id", new_rnode_id)
+                    self.rnode_ids[qset_idx][q_idx] = new_rnode_id
+
+                logging.debug("========== reverse q ===========")
+                logging.debug("nr %s", nr)
+                logging.debug("qset_idx %s", qset_idx)
+                logging.debug(f"q_idx {q_idx}")
+                logging.debug("rnode_id %s", rnode_id)
+                logging.debug("available_nrs %s", available_nrs)
+                logging.debug("note_nr_max %s", note_nr_max)
+                logging.debug("new_rnode_id %s", new_rnode_id)
+
         logging.debug('--------------------')
         logging.debug("edited nids %s", nids)
         logging.debug("edited self.mnode_ids %s", self.mnode_ids)
+        logging.debug("edited self.rnode_ids %s", self.rnode_ids)
 
         if del_count or new_count:
             q = "This will <b>delete %i card(s)</b> and \
@@ -621,18 +652,21 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
             # amasks = self._generateMaskSVGsFor("A")
             reg_qmasks = self._generateMaskSVGsForRegular("Q")
             reg_amasks = self._generateMaskSVGsForRegular("A")
-            # rev_qmasks = self._generateMaskSVGsForReverse("Q")
-            # rev_amasks = self._generateMaskSVGsForReverse("A")
+            rev_qmasks = self._generateMaskSVGsForReverse("Q")
+            rev_amasks = self._generateMaskSVGsForReverse("A")
             state = "reset"
             logging.debug(f'reg_qmasks {reg_qmasks}')
             logging.debug(f'reg_amasks {reg_amasks}')
+            logging.debug(f'rev_qmasks {rev_qmasks}')
+            logging.debug(f'rev_amasks {rev_amasks}')
 
         image_path = mw.col.media.addFile(self.image_path)
         img = fname2img(image_path)
 
+        # for regular q
         logging.debug("mnode_indexes %s", self.mnode_ids.keys())
         for nr, idx in enumerate(self.mnode_ids.keys()):
-            logging.debug("=====================")
+            logging.debug("========= regular q ============")
             logging.debug("nr %s", nr)
             logging.debug("idx %s", idx)
             note_id = self.mnode_ids[idx]
@@ -647,6 +681,28 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
             else:
                 self._saveMaskAndReturnNote(None, None, None,
                                             img, note_id, nid)
+        # for reverse q
+        logging.debug("rnode_ids %s", self.rnode_ids)
+        nr = 0
+        for qset_idx in self.rnode_ids.keys():
+            for q_idx in self.rnode_ids[qset_idx].keys():
+                logging.debug("========= rev q ============")
+                logging.debug("nr %s", nr)
+                logging.debug("qset_idx %s", qset_idx)
+                logging.debug("q_idx %s", q_idx)
+                note_id = self.rnode_ids[qset_idx][q_idx]
+                q_nid = mw.col.findNotes(f'"{self.ioflds["id"]}:{note_id}"')
+                logging.debug("note_id %s", note_id)
+                logging.debug("self.nids %s", self.nids)
+                nid = self.nids[note_id]
+                logging.debug("nid %s", nid)
+                if omask_path:
+                    if not q_nid:
+                        self._saveMaskAndReturnNote(omask_path, rev_qmasks[nr], rev_amasks[nr], img, note_id)
+                else:
+                    self._saveMaskAndReturnNote(None, None, None,
+                                                img, note_id, nid)
+                nr+=1
         self._showUpdateTooltipMod(del_count, new_count)
         return state
 
@@ -898,7 +954,6 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
                     svg_node.append(inversed_wrapper)
                     xml = self.remove_namespace(ET.tostring(svg_node).decode('utf-8'))
                     masks.append(xml)  
-        logging.debug(f'masks {masks}')        
         return masks
 
     def remove_namespace(self, xml_str):
@@ -966,9 +1021,7 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
                         reverseq_g_id = "%s-reverseq_g%i" % (self.occl_id, count_g)
                         rnode.set("id", reverseq_g_id)
                         # count_g += 1
-                        self.rnode_ids[idx_rnode] = {}
-                    else:
-                        self.rnode_ids[idx_rnode] = {}
+                    self.rnode_ids[idx_rnode] = {}
                     for idx_q_elm, q_elm in enumerate(rnode.findall('*')): # this is a question / hider -> rect / g / hider-rect
                         if not edit:
                             if not q_elm.get('fill') == 'none': # q elms except hider-rects
