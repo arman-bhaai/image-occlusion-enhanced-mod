@@ -90,48 +90,50 @@ default_conf_syncd = {'version': 1.25,
                       'fsize': 24,
                       'skip': [IO_FLDS["e1"], IO_FLDS["e2"]],
                       'flds': IO_FLDS}
-
-default_conf_syncd['skip'].append(IO_FLDS["e3"]) ###@ add oneln
+###@ add block start
+default_conf_syncd['ofill'] = '7F007F' 
+default_conf_syncd['skip'].append(IO_FLDS["e3"])
+###@ add block end
 
 from . import template
 
 
 def getSyncedConfig():
     # Synced preferences
-    if 'imgocc' not in mw.col.conf:
+    if 'imgocc_mod' not in mw.col.conf:
         # create initial configuration
-        mw.col.conf['imgocc'] = default_conf_syncd
+        mw.col.conf['imgocc_mod'] = default_conf_syncd
 
         # upgrade from IO 2.0:
         if 'image_occlusion_conf' in mw.col.conf:
             old_conf = mw.col.conf['image_occlusion_conf']
-            mw.col.conf['imgocc']['ofill'] = old_conf['initFill[color]']
-            mw.col.conf['imgocc']['qfill'] = old_conf['mask_fill_color']
+            mw.col.conf['imgocc_mod']['ofill'] = old_conf['initFill[color]']
+            mw.col.conf['imgocc_mod']['qfill'] = old_conf['mask_fill_color']
             # insert other upgrade actions here
         mw.col.setMod()
 
-    elif mw.col.conf['imgocc']['version'] < default_conf_syncd['version']:
+    elif mw.col.conf['imgocc_mod']['version'] < default_conf_syncd['version']:
         print("Updating config DB from earlier IO release")
         for key in list(default_conf_syncd.keys()):
-            if key not in mw.col.conf['imgocc']:
-                mw.col.conf['imgocc'][key] = default_conf_syncd[key]
-        mw.col.conf['imgocc']['version'] = default_conf_syncd['version']
+            if key not in mw.col.conf['imgocc_mod']:
+                mw.col.conf['imgocc_mod'][key] = default_conf_syncd[key]
+        mw.col.conf['imgocc_mod']['version'] = default_conf_syncd['version']
         mw.col.setMod()
 
-    return mw.col.conf['imgocc']
+    return mw.col.conf['imgocc_mod']
 
 
 def getLocalConfig():
     # Local preferences
-    if 'imgocc' not in mw.pm.profile:
-        mw.pm.profile["imgocc"] = default_conf_local
-    elif mw.pm.profile['imgocc'].get('version', 0) < default_conf_syncd['version']:
+    if 'imgocc_mod' not in mw.pm.profile:
+        mw.pm.profile["imgocc_mod"] = default_conf_local
+    elif mw.pm.profile['imgocc_mod'].get('version', 0) < default_conf_syncd['version']:
         for key in list(default_conf_local.keys()):
-            if key not in mw.col.conf['imgocc']:
-                mw.pm.profile["imgocc"][key] = default_conf_local[key]
-        mw.pm.profile['imgocc']['version'] = default_conf_local['version']
+            if key not in mw.col.conf['imgocc_mod']:
+                mw.pm.profile["imgocc_mod"][key] = default_conf_local[key]
+        mw.pm.profile['imgocc_mod']['version'] = default_conf_local['version']
 
-    return mw.pm.profile["imgocc"]
+    return mw.pm.profile["imgocc_mod"]
 
 
 def getOrCreateModel():
@@ -139,9 +141,9 @@ def getOrCreateModel():
     if not model:
         # create model and set up default field name config
         model = template.add_io_model(mw.col)
-        mw.col.conf['imgocc']['flds'] = default_conf_syncd['flds']
+        mw.col.conf['imgocc_mod']['flds'] = default_conf_syncd['flds']
         return model
-    model_version = mw.col.conf['imgocc']['version']
+    model_version = mw.col.conf['imgocc_mod']['version']
     if model_version < default_conf_syncd['version']:
         return template.update_template(mw.col, model_version)
     return model
@@ -150,7 +152,7 @@ def getOrCreateModel():
 def getModelConfig():
     model = getOrCreateModel()
     mflds = model['flds']
-    ioflds = mw.col.conf['imgocc']['flds']
+    ioflds = mw.col.conf['imgocc_mod']['flds']
     ioflds_priv = []
     for i in IO_FIDS_PRIV:
         ioflds_priv.append(ioflds[i])

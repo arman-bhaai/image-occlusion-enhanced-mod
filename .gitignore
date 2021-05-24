@@ -1,5 +1,6 @@
 # Armanian
 *.log
+todo.*
 del.*
 bkp/
 bkp_versions/

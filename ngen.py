@@ -70,7 +70,7 @@ class ImgOccNoteGenerator(object):
         self.tags = tags
         self.fields = fields
         self.did = did
-        self.qfill = '#' + mw.col.conf['imgocc']['qfill']
+        self.qfill = '#' + mw.col.conf['imgocc_mod']['qfill'] ###@ edt oneln
         loadConfig(self)
 
     def generateNotes(self):
@@ -448,12 +448,55 @@ class ImgOccNoteGenerator(object):
             mw.col.addNote(note)
             logging.debug("!notecreate %s", note)
 
+
+# Different generator subclasses for different occlusion types:
+
+class IoGenHideAllRevealOne(ImgOccNoteGenerator):
+    """
+    Q: All hidden, one prompted for. A: One revealed
+    ('nonoverlapping' / "Hide all, guess one")
+    """
+    occl_tp = "ao"
+
+    def __init__(self, ed, svg, image_path, opref, tags, fields, did):
+        ImgOccNoteGenerator.__init__(self, ed, svg, image_path,
+                                     opref, tags, fields, did)
+
+    def _createMaskAtLayernode(self, side, mask_node_index, mlayer_node):
+        mask_node = mlayer_node.childNodes[mask_node_index]
+        if side == "Q":
+            self._setQuestionAttribs(mask_node)
+        elif side == "A":
+            mlayer_node.removeChild(mask_node)
+
+
+class IoGenHideOneRevealAll(ImgOccNoteGenerator):
+    """
+    Q: One hidden, one prompted for. A: All revealed
+    ("overlapping" / "Hide one, guess one")
+    """
+    occl_tp = "oa"
+
+    def __init__(self, ed, svg, image_path, opref, tags, fields, did):
+        ImgOccNoteGenerator.__init__(self, ed, svg, image_path,
+                                     opref, tags, fields, did)
+
+    def _createMaskAtLayernode(self, side, mask_node_index, mlayer_node):
+        for i in reversed(self.mnode_indexes):
+            mask_node = mlayer_node.childNodes[i]
+            if i == mask_node_index and side == "Q":
+                self._setQuestionAttribs(mask_node)
+                mask_node.setAttribute("class", "qshape")
+            else:
+                mlayer_node.removeChild(mask_node)
+
+
 ###@ ''' external start
 import xml.etree.ElementTree as ET ###@ add oneln
 import re ###@ add oneln
 
 class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
-    occl_tp = "po"
+    occl_tp = "mod"
     def __init__(self, ed, svg, image_path, opref, tags, fields, did):
         super().__init__(ed, svg, image_path, opref, tags, fields, did)
         self.mnode_ids = {}
@@ -549,7 +592,7 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
                     # increment maximum note_id number
                     note_nr_max = note_nr_max + 1
                     note_nr = note_nr_max
-                new_mnode_id = self.occl_id + '-regularq_new_card-' + str(note_nr)
+                new_mnode_id = self.occl_id + '-regularq_qedt_card-' + str(note_nr) # edt means cards created by editing
                 new_count += 1
                 nids[new_mnode_id] = None
 
@@ -583,7 +626,7 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
                         # increment maximum note_id number
                         note_nr_max = note_nr_max + 1
                         note_nr = note_nr_max
-                    new_rnode_id = self.occl_id + '-reverseq_new_card-' + str(note_nr)
+                    new_rnode_id = self.occl_id + '-reverseq_qsetedt_card-' + str(note_nr)
                     new_count += 1
                     nids[new_rnode_id] = None
 
@@ -999,7 +1042,7 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
             if mnode.tag != self._ns('title'):
                 if i%2 == 1: # this is a question
                     if not edit:
-                        self.mnode_ids[i] = "%s-regularq_%i_card-%i" % (self.occl_id, count_ques, count_card)
+                        self.mnode_ids[i] = "%s-regularq_q%i_card-%i" % (self.occl_id, count_ques, count_card)
                         mnode.set("id", self.mnode_ids[i])
                     else:
                         self.mnode_ids[i] = mnode.get('id')
@@ -1018,7 +1061,7 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
             if rnode.tag != self._ns('title'):
                 if idx_rnode%2 == 1 and rnode.tag == self._ns('g'): # this is a  question group -> g
                     if not edit:
-                        reverseq_g_id = "%s-reverseq_g%i" % (self.occl_id, count_g)
+                        reverseq_g_id = "%s-reverseq_qset%i" % (self.occl_id, count_g)
                         rnode.set("id", reverseq_g_id)
                         # count_g += 1
                     self.rnode_ids[idx_rnode] = {}
@@ -1085,44 +1128,3 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
         tooltip(f"{len(reg_qmasks)+len(rev_qmasks)} cards <b>added</b><br>regular: {len(reg_qmasks)}<br>reverse: {len(rev_qmasks)}", parent=None)
         return state
 ###@ ''' external end
-
-# Different generator subclasses for different occlusion types:
-
-class IoGenHideAllRevealOne(ImgOccNoteGenerator):
-    """
-    Q: All hidden, one prompted for. A: One revealed
-    ('nonoverlapping' / "Hide all, guess one")
-    """
-    occl_tp = "ao"
-
-    def __init__(self, ed, svg, image_path, opref, tags, fields, did):
-        ImgOccNoteGenerator.__init__(self, ed, svg, image_path,
-                                     opref, tags, fields, did)
-
-    def _createMaskAtLayernode(self, side, mask_node_index, mlayer_node):
-        mask_node = mlayer_node.childNodes[mask_node_index]
-        if side == "Q":
-            self._setQuestionAttribs(mask_node)
-        elif side == "A":
-            mlayer_node.removeChild(mask_node)
-
-
-class IoGenHideOneRevealAll(ImgOccNoteGenerator):
-    """
-    Q: One hidden, one prompted for. A: All revealed
-    ("overlapping" / "Hide one, guess one")
-    """
-    occl_tp = "oa"
-
-    def __init__(self, ed, svg, image_path, opref, tags, fields, did):
-        ImgOccNoteGenerator.__init__(self, ed, svg, image_path,
-                                     opref, tags, fields, did)
-
-    def _createMaskAtLayernode(self, side, mask_node_index, mlayer_node):
-        for i in reversed(self.mnode_indexes):
-            mask_node = mlayer_node.childNodes[i]
-            if i == mask_node_index and side == "Q":
-                self._setQuestionAttribs(mask_node)
-                mask_node.setAttribute("class", "qshape")
-            else:
-                mlayer_node.removeChild(mask_node)

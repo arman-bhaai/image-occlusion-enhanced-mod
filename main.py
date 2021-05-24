@@ -61,8 +61,8 @@ def onImgOccButton(self, origin=None, image_path=None):
     io_model = getOrCreateModel()
     if io_model:
         io_model_fields = mw.col.models.fieldNames(io_model)
-        if "imgocc" in mw.col.conf:
-            dflt_fields = list(mw.col.conf['imgocc']['flds'].values())
+        if "imgocc_mod" in mw.col.conf:
+            dflt_fields = list(mw.col.conf['imgocc_mod']['flds'].values())
         else:
             dflt_fields = list(IO_FLDS.values())
         # note type integrity check
@@ -80,7 +80,7 @@ def onImgOccButton(self, origin=None, image_path=None):
 
 def onSetupEditorButtons(buttons, editor):
     """Add IO button to Editor"""
-    conf = mw.pm.profile.get("imgocc")
+    conf = mw.pm.profile.get("imgocc_mod")
     if not conf:
         hotkey = IO_HOTKEY
     else:
@@ -89,10 +89,10 @@ def onSetupEditorButtons(buttons, editor):
     origin = getEdParentInstance(editor.parentWindow)
 
     if origin == "addcards":
-        tt = "Add Image Occlusion"
+        tt = "Add Image Occlusion Mod"
         icon_name = "add.png"
     else:
-        tt = "Edit Image Occlusion"
+        tt = "Edit Image Occlusion Mod"
         icon_name = "edit.png"
 
     icon = os.path.join(ICONS_PATH, icon_name)

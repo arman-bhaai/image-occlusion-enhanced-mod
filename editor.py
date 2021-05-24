@@ -447,6 +447,44 @@ class ImgOccEdit(QDialog):
 class ImgOccEditMod(ImgOccEdit):
     def __init__(self, imgoccadd, parent):
         super().__init__(imgoccadd, parent)
+
+    def switchToMode(self, mode):
+        """Toggle between add and edit layouts"""
+        hide_on_add = [self.edit_btn]
+        hide_on_edit = [self.process_all_btn]
+        hide_forever = [self.occl_tp_select, self.new_btn, self.ao_btn, self.oa_btn]
+        self.mode = mode
+        for i in list(self.tedit.values()):
+            i.show()
+        for i in list(self.tlabel.values()):
+            i.show()
+        if mode == "add":
+            for i in hide_on_add:
+                i.hide()
+            for i in hide_on_edit:
+                i.show()
+            for i in hide_forever:
+                i.hide()
+            dl_txt = "Deck"
+            ttl = "Image Occlusion Enhanced Mod - Add Mode"
+            bl_txt = "Add Cards:"
+        else:
+            for i in hide_on_add:
+                i.show()
+            for i in hide_on_edit:
+                i.hide()
+            for i in hide_forever:
+                i.hide()
+            for i in self.sconf['skip']:
+                if i in list(self.tedit.keys()): ###tags
+                    self.tedit[i].hide()
+                    self.tlabel[i].hide()
+            dl_txt = "Deck for <i>Add new cards</i>"
+            ttl = "Image Occlusion Enhanced Mod - Editing Mode"
+            bl_txt = "Type:"
+        self.deckChooser.deckLabel.setText(dl_txt)
+        self.setWindowTitle(ttl)
+        self.bottom_label.setText(bl_txt)
     
     def setupUi(self):
         """Set up ImgOccEdit UI"""
@@ -602,7 +640,7 @@ class ImgOccEditMod(ImgOccEdit):
                       self).activated.connect(lambda f=i-1: self.focusField(f))
         # Other hotkeys
         QShortcut(QKeySequence("Ctrl+Return"),
-                  self).activated.connect(lambda: self.defaultAction(True))
+                  self).activated.connect(lambda: self.on_process_all(True))
         QShortcut(QKeySequence("Ctrl+Shift+Return"),
                   self).activated.connect(lambda: self.addOA(True))
         QShortcut(QKeySequence("Ctrl+Tab"),

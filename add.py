@@ -380,7 +380,7 @@ class ImgOccAdd(object):
                 continue
             text = dialog.tedit[fn].toPlainText().replace('\n', '<br />')
             fields[fn] = text
-        tags = dialog.tags_edit.text().split()
+        tags = dialog.tags_edit.text().split() ###tags
         return (fields, tags)
 
 
@@ -460,9 +460,10 @@ class ImgOccAddMod(ImgOccAdd):
         url = QUrl.fromLocalFile(svg_edit_path)
         items = QUrlQuery()
         global svg_edit_queryitems
-        svg_edit_queryitems += [
-            ('initFill[opacity]', '0.4'),
-        ]
+        svg_edit_queryitems = [('initStroke[opacity]', '1'),
+                       ('showRulers', 'false'),
+                       ('extensions', svg_edit_ext),
+                       ('initOpacity', '0.3')]
         items.setQueryItems(svg_edit_queryitems)
         items.addQueryItem('initFill[color]', ofill)
         items.addQueryItem('dimensions', '{0},{1}'.format(width, height))
@@ -490,7 +491,7 @@ class ImgOccAddMod(ImgOccAdd):
         dialog.svg_edit.setUrl(url)
         dialog.deckChooser.deck.setText(deck)
         dialog.tags_edit.setCol(mw.col)
-        dialog.tags_edit.setText(opref["tags"])
+        dialog.tags_edit.setText(opref["tags"]) ###tags
 
         if onote:
             for i in self.ioflds_prsv:
@@ -571,7 +572,7 @@ class ImgOccAddMod(ImgOccAdd):
         if self.origin == "addcards" and self.ed.note:
             # Update Editor with modified tags and sources field
             self.ed.tags.setText(" ".join(tags))
-            self.ed.saveTags()
+            self.ed.saveTags() ###tags
             for i in self.ioflds_prsv:
                 if i in self.ed.note:
                     self.ed.note[i] = fields[i]
@@ -580,7 +581,9 @@ class ImgOccAddMod(ImgOccAdd):
             self.ed.parentWindow.deckChooser.deck.setText(deck)
 
         if close:
-            dialog.close()
+            # Call dialog.close() after 5 seconds
+            QTimer.singleShot(3000, dialog.close)
+            # dialog.close()
 
         mw.reset()
 
