@@ -36,7 +36,8 @@ from .add import ImgOccAdd, ImgOccAddMod ###@ add oneitm
 from .options import ImgOccOpts
 from .dialogs import ioHelp, ioCritical
 
-logging.basicConfig(stream=sys.stdout, level=logging.ERROR)
+# logging.basicConfig(stream=sys.stdout, level=logging.ERROR)
+logging.basicConfig(format='%(levelname)s: %(message)s', filename='debug.log', level=logging.DEBUG, filemode='w')
 
 
 def onIoSettings():

@@ -43,8 +43,8 @@ IO_FLDS_IDS = ["id", "hd", "im", "qm", "ft", "rk",
                "sc", "e1", "e2", "am", "om"]
 
 ###@ add/edt block start
-IO_MODEL_NAME = "Image Occlusion Enhanced Mod"
-IO_CARD_NAME = "IO Mod Card"
+IO_MODEL_NAME = "Image Occlusion Enhanced Mod SI"
+IO_CARD_NAME = "IO Mod Card SI"
 IO_FLDS.update({
     'id': "ID (hidden)",
     'e1': 'Question Extra',

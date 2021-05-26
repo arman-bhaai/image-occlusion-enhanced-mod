@@ -451,7 +451,7 @@ class ImgOccEditMod(ImgOccEdit):
     def switchToMode(self, mode):
         """Toggle between add and edit layouts"""
         hide_on_add = [self.edit_btn]
-        hide_on_edit = [self.process_all_btn]
+        hide_on_edit = [self.process_si_btn]
         hide_forever = [self.occl_tp_select, self.new_btn, self.ao_btn, self.oa_btn]
         self.mode = mode
         for i in list(self.tedit.values()):
@@ -541,7 +541,8 @@ class ImgOccEditMod(ImgOccEdit):
                                            QDialogButtonBox.ActionRole)
         close_button = button_box.addButton("&Close",
                                             QDialogButtonBox.RejectRole)
-        self.process_all_btn = button_box.addButton("P&rocess All",
+        # button for processing short image
+        self.process_si_btn = button_box.addButton("Process &Short Image",
                                             QDialogButtonBox.ActionRole) ###@ add oneln
 
         image_tt = ("Switch to a different image while preserving all of "
@@ -554,7 +555,7 @@ class ImgOccEditMod(ImgOccEdit):
         oa_tt = ("Generate cards with overlapping information, where one<br>"
                  "label is hidden on the front and revealed on the back")
         close_tt = "Close Image Occlusion Editor without generating cards"
-        process_all_tt = "Armanian Modifications" ###@ add oneln
+        process_si_tt = "Armanian Modifications for making questions from short source image" ###@ add oneln
 
         image_btn.setToolTip(image_tt)
         self.edit_btn.setToolTip(edit_tt)
@@ -562,12 +563,12 @@ class ImgOccEditMod(ImgOccEdit):
         self.ao_btn.setToolTip(ao_tt)
         self.oa_btn.setToolTip(oa_tt)
         close_button.setToolTip(close_tt)
-        self.process_all_btn.setToolTip(process_all_tt) ###@ add oneln
+        self.process_si_btn.setToolTip(process_si_tt) ###@ add oneln
         self.occl_tp_select.setItemData(0, dc_tt, Qt.ToolTipRole)
         self.occl_tp_select.setItemData(1, ao_tt, Qt.ToolTipRole)
         self.occl_tp_select.setItemData(2, oa_tt, Qt.ToolTipRole)
 
-        for btn in [image_btn, self.edit_btn, self.new_btn, self.process_all_btn, self.ao_btn,
+        for btn in [image_btn, self.edit_btn, self.new_btn, self.process_si_btn, self.ao_btn,
                     self.oa_btn, close_button]: ###@ add oneitm
             btn.setFocusPolicy(Qt.ClickFocus)
 
@@ -576,7 +577,7 @@ class ImgOccEditMod(ImgOccEdit):
         self.ao_btn.clicked.connect(self.addAO)
         self.oa_btn.clicked.connect(self.addOA)
         close_button.clicked.connect(self.close)
-        self.process_all_btn.clicked.connect(self.on_process_all) ###@ add oneln
+        self.process_si_btn.clicked.connect(self.on_process_si) ###@ add oneln
 
         # Set basic layout up
 
@@ -640,7 +641,7 @@ class ImgOccEditMod(ImgOccEdit):
                       self).activated.connect(lambda f=i-1: self.focusField(f))
         # Other hotkeys
         QShortcut(QKeySequence("Ctrl+Return"),
-                  self).activated.connect(lambda: self.on_process_all(True))
+                  self).activated.connect(lambda: self.on_process_si(True))
         QShortcut(QKeySequence("Ctrl+Shift+Return"),
                   self).activated.connect(lambda: self.addOA(True))
         QShortcut(QKeySequence("Ctrl+Tab"),
@@ -655,7 +656,7 @@ class ImgOccEditMod(ImgOccEdit):
                   self).activated.connect(self.fitImageCanvas)
 
     ###@ add block start
-    def on_process_all(self, close=False):
-        self.imgoccadd.on_process_all_btn("process_all", close)
+    def on_process_si(self, close=False):
+        self.imgoccadd.onAddNotesButtonMod("process_si", close)
     ###@ add block end
 ###end

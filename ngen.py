@@ -31,7 +31,6 @@ from .dialogs import ioAskUser
 from .utils import fname2img
 from .config import *
 
-logging.basicConfig(format='%(levelname)s: %(message)s', filename='debug.log', level=logging.DEBUG, filemode='w')
 
 # Explanation of some of the variables:
 #
@@ -495,8 +494,9 @@ class IoGenHideOneRevealAll(ImgOccNoteGenerator):
 import xml.etree.ElementTree as ET ###@ add oneln
 import re ###@ add oneln
 
-class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
-    occl_tp = "mod"
+### class for processing short image
+class IONGenSI(ImgOccNoteGenerator):
+    occl_tp = "mod_si"
     def __init__(self, ed, svg, image_path, opref, tags, fields, did):
         super().__init__(ed, svg, image_path, opref, tags, fields, did)
         self.mnode_ids = {}
@@ -576,10 +576,10 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
         note_nr_max = max_tnode_note_nr
         new_count = 0
         # for regular questions
-        for nr, idx in enumerate(self.mnode_ids.keys()):
-            mnode_id = mnode_ids[idx]
+        for nr, q_idx in enumerate(self.mnode_ids.keys()):
+            mnode_id = mnode_ids[q_idx]
             new_mnode_id = None
-            mnode = mlayer_node[idx]
+            mnode = mlayer_node[q_idx]
             
             if mnode_id not in exstg_tnode_note_ids: # for newly added shapes
                 logging.info('new shapes added')
@@ -598,11 +598,11 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
 
             if new_mnode_id:
                 mnode.set("id", new_mnode_id)
-                self.mnode_ids[idx] = new_mnode_id
+                self.mnode_ids[q_idx] = new_mnode_id
 
             logging.debug("========= regular q ============")
             logging.debug("nr %s", nr)
-            logging.debug("idx %s", idx)
+            logging.debug("q_idx %s", q_idx)
             logging.debug("mnode_id %s", mnode_id)
             logging.debug("available_nrs %s", available_nrs)
             logging.debug("note_nr_max %s", note_nr_max)
@@ -614,7 +614,7 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
                 rnode_id = rnode_ids[qset_idx][q_idx]
                 new_rnode_id = None
                 rnode = rlayer_node[qset_idx][q_idx]
-                
+
                 if rnode_id not in exstg_tnode_note_ids: # for newly added shapes
                     logging.info('new shapes added')
                     if available_nrs: # if some existing shapes have been deleted before 
@@ -1073,7 +1073,8 @@ class ImgOccNoteGeneratorMod(ImgOccNoteGenerator):
                                 self.rnode_ids[idx_rnode][idx_q_elm] = q_elm_id
                                 count_card += 1
                         else:
-                            self.rnode_ids[idx_rnode][idx_q_elm] = q_elm.get('id')
+                            if not q_elm.get('fill') == 'none':
+                                self.rnode_ids[idx_rnode][idx_q_elm] = q_elm.get('id')
 
                 elif idx_rnode%2 == 0: # this is a question wrapper
                     if not edit:

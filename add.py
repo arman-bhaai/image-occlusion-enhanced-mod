@@ -401,7 +401,7 @@ class ImgOccAddMod(ImgOccAdd):
         old_occl_tp = self.opref["occl_tp"]
 
         noteGenerator = genByKey(choice, old_occl_tp)
-        gen = ImgOccNoteGeneratorMod(self.ed, svg, self.image_path,
+        gen = IONGenSI(self.ed, svg, self.image_path,
                             self.opref, tags, fields, did)
         r = gen.updateNotes()
         if r is False:
@@ -563,7 +563,7 @@ class ImgOccAddMod(ImgOccAdd):
         did = dialog.deckChooser.selectedId()
 
         ###@ rem oneln
-        gen = ImgOccNoteGeneratorMod(self.ed, svg, self.image_path,
+        gen = IONGenSI(self.ed, svg, self.image_path,
                             self.opref, tags, fields, did)
         r = gen.generateNotesMod() ###@ edt oneitm
         if r is False:
@@ -592,10 +592,4 @@ class ImgOccAddMod(ImgOccAdd):
         dialog.svg_edit.evalWithCallback(
             "svgCanvas.svgCanvasToString();",
             lambda val, choice=choice, close=close: self._onAddNotesButtonMod(choice, close, val)) ###@ edt oneitm
-
-    ###@ add block start
-    def on_process_all_btn(self, choice, close):
-        self.onAddNotesButtonMod(choice, close)
-    ###@ add block start
-
 ###@ external end
